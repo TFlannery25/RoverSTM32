@@ -1,0 +1,10 @@
+# Build output
+/Debug/
+/Release/
+
+# CubeMX cache
+.mxproject
+
+# OS clutter
+.DS_Store
+Thumbs.db
