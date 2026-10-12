@@ -23,9 +23,11 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Icm20948.h"
+#include "PiLink.h"
 #include "task.h"
 #include <cstdio>
 #include <cmath>
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,6 +51,7 @@
 I2C_HandleTypeDef hi2c1;
 
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart2_tx;
 
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -64,6 +67,7 @@ const osThreadAttr_t defaultTask_attributes = {
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_USART2_UART_Init(void);
 void StartDefaultTask(void *argument);
@@ -74,7 +78,6 @@ void StartDefaultTask(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
 static void LedBlinkTask(void* argument)
 	{
 	    for (;;)
@@ -98,7 +101,6 @@ static void ImuTask(void* argument)
     float mag_heading = atan2(my, mx);
     float yaw = mag_heading;
 
-    int time = 0;
 
     for (;;)
     {
@@ -119,6 +121,8 @@ static void ImuTask(void* argument)
         float ay_ms2 = ay * 9.81;
         float az_ms2 = az * 9.81;
 
+        float gyro_x_rads = gx * (M_PI / 180.0f);
+        float gyro_y_rads = gy * (M_PI / 180.0f);
         float gyro_z_rads = gz * (M_PI / 180.0f);
 
         mag_heading = atan2(my, mx);
@@ -135,27 +139,11 @@ static void ImuTask(void* argument)
         //yaw = alpha * (yaw + gyro_z_rads * dt) + (1.0f - alpha) * mag_heading;
 
 
-        if(time > 1000)
-        {
+        PiLink::sendImuFrame(now_ms, yaw, gyro_x_rads, gyro_y_rads, gyro_z_rads, ax_ms2, ay_ms2, az_ms2);
 
-
-        char msg[128];
-        int len = snprintf(msg, sizeof(msg),
-            "ax=%.3f ay=%.3f az=%.3f gx=%.2f gy=%.2f gz=%.2f mx=%.1f my=%.1f mz=%.1f mag_heading=%.1f yaw=%.1f\r\n",
-            ax_ms2, ay_ms2, az_ms2, gx, gy, gz, mx, my, mz, mag_heading, yaw);
-
-        HAL_UART_Transmit(&huart2, reinterpret_cast<uint8_t*>(msg), len, HAL_MAX_DELAY);
-
-        time = 0;
-        }
-
-        time += 20;
         vTaskDelay(pdMS_TO_TICKS(20));
-
-        //vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
-
 
 /* USER CODE END 0 */
 
@@ -173,7 +161,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-   HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -188,22 +176,25 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C1_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
   static Icm20948 imu(&hi2c1);
-    //bool imuOk = imu.checkWhoAmI();
+      //bool imuOk = imu.checkWhoAmI();
 
-    imu.wake();
-    imu.configureAccelGyro();
+      imu.wake();
+      imu.configureAccelGyro();
 
-    imu.enableMagnetometerBypass();
-    imu.configureMagnetometer();
+      imu.enableMagnetometerBypass();
+      imu.configureMagnetometer();
 
-    xTaskCreate(LedBlinkTask, "LedBlink", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
+      xTaskCreate(LedBlinkTask, "LedBlink", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
 
-    xTaskCreate(ImuTask, "ImuTask", 512, &imu, tskIDLE_PRIORITY + 1, NULL);
+      xTaskCreate(ImuTask, "ImuTask", 512, &imu, tskIDLE_PRIORITY + 1, NULL);
+
+      PiLink::init();
 
   /* USER CODE END 2 */
 
@@ -371,7 +362,42 @@ static void MX_USART2_UART_Init(void)
   }
   /* USER CODE BEGIN USART2_Init 2 */
 
+  HAL_NVIC_SetPriority(USART2_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(USART2_IRQn);
+
+  hdma_usart2_tx.Instance = DMA1_Stream6;
+  hdma_usart2_tx.Init.Channel = DMA_CHANNEL_4;
+  hdma_usart2_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
+  hdma_usart2_tx.Init.PeriphInc = DMA_PINC_DISABLE;
+  hdma_usart2_tx.Init.MemInc = DMA_MINC_ENABLE;
+  hdma_usart2_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+  hdma_usart2_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+  hdma_usart2_tx.Init.Mode = DMA_NORMAL;
+  hdma_usart2_tx.Init.Priority = DMA_PRIORITY_LOW;
+  hdma_usart2_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+  if (HAL_DMA_Init(&hdma_usart2_tx) != HAL_OK)
+  {
+	  Error_Handler();
+  }
+
+  __HAL_LINKDMA(&huart2, hdmatx, hdma_usart2_tx);
   /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
 
 }
 
@@ -398,7 +424,12 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if (huart->Instance == USART2) {
+		PiLink::onTxComplete();
+	}
+}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
