@@ -191,21 +191,21 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   static Icm20948 imu(&hi2c1);
-           //bool imuOk = imu.checkWhoAmI();
+             //bool imuOk = imu.checkWhoAmI();
 
-           imu.wake();
-           imu.configureAccelGyro();
+             imu.wake();
+             imu.configureAccelGyro();
 
-           imu.enableMagnetometerBypass();
-           imu.configureMagnetometer();
+             imu.enableMagnetometerBypass();
+             imu.configureMagnetometer();
 
-           xTaskCreate(LedBlinkTask, "LedBlink", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
+             xTaskCreate(LedBlinkTask, "LedBlink", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
 
-           xTaskCreate(ImuTask, "ImuTask", 512, &imu, tskIDLE_PRIORITY + 1, NULL);
+             xTaskCreate(ImuTask, "ImuTask", 512, &imu, tskIDLE_PRIORITY + 1, NULL);
 
-           xTaskCreate(MotorTestTask, "MotorTest", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
+             xTaskCreate(MotorTestTask, "MotorTest", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
 
-           PiLink::init();
+             PiLink::init();
 
   /* USER CODE END 2 */
 
@@ -495,24 +495,24 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 2 */
 
   HAL_NVIC_SetPriority(USART2_IRQn, 5, 0);
-        HAL_NVIC_EnableIRQ(USART2_IRQn);
+          HAL_NVIC_EnableIRQ(USART2_IRQn);
 
-        hdma_usart2_tx.Instance = DMA1_Stream6;
-        hdma_usart2_tx.Init.Channel = DMA_CHANNEL_4;
-        hdma_usart2_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
-        hdma_usart2_tx.Init.PeriphInc = DMA_PINC_DISABLE;
-        hdma_usart2_tx.Init.MemInc = DMA_MINC_ENABLE;
-        hdma_usart2_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-        hdma_usart2_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-        hdma_usart2_tx.Init.Mode = DMA_NORMAL;
-        hdma_usart2_tx.Init.Priority = DMA_PRIORITY_LOW;
-        hdma_usart2_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-        if (HAL_DMA_Init(&hdma_usart2_tx) != HAL_OK)
-        {
-      	  Error_Handler();
-        }
+          hdma_usart2_tx.Instance = DMA1_Stream6;
+          hdma_usart2_tx.Init.Channel = DMA_CHANNEL_4;
+          hdma_usart2_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
+          hdma_usart2_tx.Init.PeriphInc = DMA_PINC_DISABLE;
+          hdma_usart2_tx.Init.MemInc = DMA_MINC_ENABLE;
+          hdma_usart2_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+          hdma_usart2_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+          hdma_usart2_tx.Init.Mode = DMA_NORMAL;
+          hdma_usart2_tx.Init.Priority = DMA_PRIORITY_LOW;
+          hdma_usart2_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+          if (HAL_DMA_Init(&hdma_usart2_tx) != HAL_OK)
+          {
+        	  Error_Handler();
+          }
 
-        __HAL_LINKDMA(&huart2, hdmatx, hdma_usart2_tx);
+          __HAL_LINKDMA(&huart2, hdmatx, hdma_usart2_tx);
 
   /* USER CODE END USART2_Init 2 */
 
@@ -553,13 +553,13 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|GPIO_PIN_1, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, BIN1_Pin|BIN2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, STBY_Pin|AIN2_Pin|AIN1_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PC0 PC1 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
+  /*Configure GPIO pins : BIN1_Pin BIN2_Pin */
+  GPIO_InitStruct.Pin = BIN1_Pin|BIN2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

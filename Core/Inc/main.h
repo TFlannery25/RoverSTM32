@@ -61,6 +61,10 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define BIN1_Pin GPIO_PIN_0
+#define BIN1_GPIO_Port GPIOC
+#define BIN2_Pin GPIO_PIN_1
+#define BIN2_GPIO_Port GPIOC
 #define USART_TX_Pin GPIO_PIN_2
 #define USART_TX_GPIO_Port GPIOA
 #define USART_RX_Pin GPIO_PIN_3
