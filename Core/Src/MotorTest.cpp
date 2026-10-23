@@ -10,14 +10,21 @@ struct MotorChannel {
     uint32_t      timChannel;
     GPIO_TypeDef* in1Port; uint16_t in1Pin;
     GPIO_TypeDef* in2Port; uint16_t in2Pin;
-    int8_t        invert;    // set to -1 if this side runs backward for "forward"
+    int8_t        invert;    // -1 if this wheel runs backward for "forward"
 };
 
-static MotorChannel leftSide  { TIM_CHANNEL_1, AIN1_GPIO_Port, AIN1_Pin, AIN2_GPIO_Port, AIN2_Pin,  1 };
-static MotorChannel rightSide { TIM_CHANNEL_2, BIN1_GPIO_Port, BIN1_Pin, BIN2_GPIO_Port, BIN2_Pin,  1 };
+enum Wheel { LF = 0, LR, RF, RR, NUM_WHEELS };
+
+static MotorChannel wheels[NUM_WHEELS] = {
+    { TIM_CHANNEL_1, LF_IN1_GPIO_Port, LF_IN1_Pin, LF_IN2_GPIO_Port, LF_IN2_Pin,  1 },
+    { TIM_CHANNEL_2, LR_IN1_GPIO_Port, LR_IN1_Pin, LR_IN2_GPIO_Port, LR_IN2_Pin,  1 },
+    { TIM_CHANNEL_3, RF_IN1_GPIO_Port, RF_IN1_Pin, RF_IN2_GPIO_Port, RF_IN2_Pin,  1 },
+    { TIM_CHANNEL_4, RR_IN1_GPIO_Port, RR_IN1_Pin, RR_IN2_GPIO_Port, RR_IN2_Pin,  1 },
+};
 
 volatile int32_t g_dutyPercent = 0;
 volatile int32_t g_mode        = 0;
+static const int32_t NUM_MODES = 6;
 
 static void setMotor(const MotorChannel& m, int32_t duty, uint32_t arr)
 {
@@ -58,30 +65,35 @@ extern "C" void MotorTestTask(void* /*arg*/)
 
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
     HAL_GPIO_WritePin(STBY_GPIO_Port, STBY_Pin, GPIO_PIN_SET);
 
     GPIO_PinState lastButton = GPIO_PIN_SET;   // B1 is active low
 
     for (;;) {
-        // Mode button: act on press (high -> low edge)
     	GPIO_PinState b = HAL_GPIO_ReadPin(USER_BUTTON_GPIO_PORT, USER_BUTTON_PIN);
         if (lastButton == GPIO_PIN_SET && b == GPIO_PIN_RESET) {
-            g_mode = (g_mode + 1) % 4;
+            g_mode = (g_mode + 1) % NUM_MODES;
         }
         lastButton = b;
 
         int32_t duty = readKnobDuty(arr);
-        int32_t left = 0, right = 0;
+        int32_t cmd[NUM_WHEELS] = {0, 0, 0, 0};
+
         switch (g_mode) {
-            case 0: left = duty;  right = duty; break;   // straight
-            case 1: left = duty;  right = 0;    break;   // left only
-            case 2: left = 0;     right = duty; break;   // right only
-            case 3: left = -duty; right = duty; break;   // spin in place
+            case 0: cmd[LF] = cmd[LR] = cmd[RF] = cmd[RR] = duty; break;
+            case 1: cmd[LF] = duty; break;
+            case 2: cmd[LR] = duty; break;
+            case 3: cmd[RF] = duty; break;
+            case 4: cmd[RR] = duty; break;
+            case 5: cmd[LF] = cmd[LR] = -duty; cmd[RF] = cmd[RR] = duty; break;
         }
 
         g_dutyPercent = duty * 100 / (int32_t)arr;
-        setMotor(leftSide,  left,  arr);
-        setMotor(rightSide, right, arr);
-        vTaskDelay(pdMS_TO_TICKS(20));   // 20 ms polling also debounces the button
+        for (int i = 0; i < NUM_WHEELS; ++i) {
+            setMotor(wheels[i], cmd[i], arr);
+        }
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
