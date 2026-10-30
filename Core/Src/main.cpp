@@ -25,6 +25,7 @@
 #include "Icm20948.h"
 #include "PiLink.h"
 #include "MotorTest.h"
+#include "WheelSensor.h"
 #include "task.h"
 #include <cstdio>
 #include <cmath>
@@ -54,6 +55,7 @@ ADC_HandleTypeDef hadc1;
 I2C_HandleTypeDef hi2c1;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_tx;
@@ -77,6 +79,7 @@ static void MX_I2C1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_TIM3_Init(void);
 void StartDefaultTask(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -188,24 +191,27 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM1_Init();
   MX_USART2_UART_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
   static Icm20948 imu(&hi2c1);
-              //bool imuOk = imu.checkWhoAmI();
+                //bool imuOk = imu.checkWhoAmI();
 
-              imu.wake();
-              imu.configureAccelGyro();
+                imu.wake();
+                imu.configureAccelGyro();
 
-              imu.enableMagnetometerBypass();
-              imu.configureMagnetometer();
+                imu.enableMagnetometerBypass();
+                imu.configureMagnetometer();
 
-              xTaskCreate(LedBlinkTask, "LedBlink", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
+                xTaskCreate(LedBlinkTask, "LedBlink", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
 
-              xTaskCreate(ImuTask, "ImuTask", 512, &imu, tskIDLE_PRIORITY + 1, NULL);
+                xTaskCreate(ImuTask, "ImuTask", 512, &imu, tskIDLE_PRIORITY + 1, NULL);
 
-              xTaskCreate(MotorTestTask, "MotorTest", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
+                xTaskCreate(MotorTestTask, "MotorTest", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
 
-              PiLink::init();
+                PiLink::init();
+
+                WheelSensor_Init();
 
   /* USER CODE END 2 */
 
@@ -474,6 +480,54 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_IC_InitTypeDef sConfigIC = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 839;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 65535;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_IC_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
+  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+  sConfigIC.ICFilter = 15;
+  if (HAL_TIM_IC_ConfigChannel(&htim3, &sConfigIC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -503,24 +557,24 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 2 */
 
   HAL_NVIC_SetPriority(USART2_IRQn, 5, 0);
-            HAL_NVIC_EnableIRQ(USART2_IRQn);
+              HAL_NVIC_EnableIRQ(USART2_IRQn);
 
-            hdma_usart2_tx.Instance = DMA1_Stream6;
-            hdma_usart2_tx.Init.Channel = DMA_CHANNEL_4;
-            hdma_usart2_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
-            hdma_usart2_tx.Init.PeriphInc = DMA_PINC_DISABLE;
-            hdma_usart2_tx.Init.MemInc = DMA_MINC_ENABLE;
-            hdma_usart2_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-            hdma_usart2_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-            hdma_usart2_tx.Init.Mode = DMA_NORMAL;
-            hdma_usart2_tx.Init.Priority = DMA_PRIORITY_LOW;
-            hdma_usart2_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-            if (HAL_DMA_Init(&hdma_usart2_tx) != HAL_OK)
-            {
-          	  Error_Handler();
-            }
+              hdma_usart2_tx.Instance = DMA1_Stream6;
+              hdma_usart2_tx.Init.Channel = DMA_CHANNEL_4;
+              hdma_usart2_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
+              hdma_usart2_tx.Init.PeriphInc = DMA_PINC_DISABLE;
+              hdma_usart2_tx.Init.MemInc = DMA_MINC_ENABLE;
+              hdma_usart2_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+              hdma_usart2_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+              hdma_usart2_tx.Init.Mode = DMA_NORMAL;
+              hdma_usart2_tx.Init.Priority = DMA_PRIORITY_LOW;
+              hdma_usart2_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+              if (HAL_DMA_Init(&hdma_usart2_tx) != HAL_OK)
+              {
+            	  Error_Handler();
+              }
 
-            __HAL_LINKDMA(&huart2, hdmatx, hdma_usart2_tx);
+              __HAL_LINKDMA(&huart2, hdmatx, hdma_usart2_tx);
 
   /* USER CODE END USART2_Init 2 */
 

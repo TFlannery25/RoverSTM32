@@ -2,6 +2,7 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include <cstdlib>
+#include "WheelSensor.h"
 
 extern ADC_HandleTypeDef hadc1;
 extern TIM_HandleTypeDef htim1;
@@ -94,6 +95,10 @@ extern "C" void MotorTestTask(void* /*arg*/)
         for (int i = 0; i < NUM_WHEELS; ++i) {
             setMotor(wheels[i], cmd[i], arr);
         }
+
+        g_lfRpm = WheelSensor_GetRpmLF();
+        g_lfCount = WheelSensor_GetCountLF();
+
         vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
