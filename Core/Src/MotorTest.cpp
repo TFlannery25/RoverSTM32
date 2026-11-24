@@ -14,7 +14,6 @@ struct MotorChannel {
     int8_t        invert;    // -1 if this wheel runs backward for "forward"
 };
 
-enum Wheel { LF = 0, LR, RF, RR, NUM_WHEELS };
 
 static MotorChannel wheels[NUM_WHEELS] = {
     { TIM_CHANNEL_1, LF_IN1_GPIO_Port, LF_IN1_Pin, LF_IN2_GPIO_Port, LF_IN2_Pin,  1 },
@@ -26,6 +25,9 @@ static MotorChannel wheels[NUM_WHEELS] = {
 volatile int32_t g_dutyPercent = 0;
 volatile int32_t g_mode        = 0;
 static const int32_t NUM_MODES = 6;
+
+volatile uint32_t g_wheelCount[NUM_WHEELS] = {0};
+volatile float    g_wheelRpm[NUM_WHEELS]   = {0};
 
 static void setMotor(const MotorChannel& m, int32_t duty, uint32_t arr)
 {
@@ -72,6 +74,8 @@ extern "C" void MotorTestTask(void* /*arg*/)
 
     GPIO_PinState lastButton = GPIO_PIN_SET;   // B1 is active low
 
+
+
     for (;;) {
     	GPIO_PinState b = HAL_GPIO_ReadPin(USER_BUTTON_GPIO_PORT, USER_BUTTON_PIN);
         if (lastButton == GPIO_PIN_SET && b == GPIO_PIN_RESET) {
@@ -96,8 +100,12 @@ extern "C" void MotorTestTask(void* /*arg*/)
             setMotor(wheels[i], cmd[i], arr);
         }
 
-        g_lfRpm = WheelSensor_GetRpmLF();
-        g_lfCount = WheelSensor_GetCountLF();
+        for (int i = 0; i < NUM_WHEELS; ++i) {
+            g_wheelCount[i] = WheelSensor_GetCount((Wheel)i);
+            g_wheelRpm[i]   = WheelSensor_GetRpm((Wheel)i);
+        }
+
+
 
         vTaskDelay(pdMS_TO_TICKS(20));
     }

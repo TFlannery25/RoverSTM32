@@ -195,23 +195,23 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   static Icm20948 imu(&hi2c1);
-                //bool imuOk = imu.checkWhoAmI();
+                  //bool imuOk = imu.checkWhoAmI();
 
-                imu.wake();
-                imu.configureAccelGyro();
+                  imu.wake();
+                  imu.configureAccelGyro();
 
-                imu.enableMagnetometerBypass();
-                imu.configureMagnetometer();
+                  imu.enableMagnetometerBypass();
+                  imu.configureMagnetometer();
 
-                xTaskCreate(LedBlinkTask, "LedBlink", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
+                  xTaskCreate(LedBlinkTask, "LedBlink", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
 
-                xTaskCreate(ImuTask, "ImuTask", 512, &imu, tskIDLE_PRIORITY + 1, NULL);
+                  xTaskCreate(ImuTask, "ImuTask", 512, &imu, tskIDLE_PRIORITY + 1, NULL);
 
-                xTaskCreate(MotorTestTask, "MotorTest", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
+                  xTaskCreate(MotorTestTask, "MotorTest", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
 
-                PiLink::init();
+                  PiLink::init();
 
-                WheelSensor_Init();
+                  WheelSensor_Init();
 
   /* USER CODE END 2 */
 
@@ -518,6 +518,18 @@ static void MX_TIM3_Init(void)
   sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
   sConfigIC.ICFilter = 15;
   if (HAL_TIM_IC_ConfigChannel(&htim3, &sConfigIC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_IC_ConfigChannel(&htim3, &sConfigIC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_IC_ConfigChannel(&htim3, &sConfigIC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_IC_ConfigChannel(&htim3, &sConfigIC, TIM_CHANNEL_4) != HAL_OK)
   {
     Error_Handler();
   }
